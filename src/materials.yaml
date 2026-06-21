@@ -1,0 +1,14 @@
+silicone_rubber:
+  density: 1100  # kg/m^3
+  youngs_modulus: 1e6  # Pa
+  poisson_ratio: 0.48  # dimensionless
+
+plastic:
+  density: 1250  # kg/m^3
+  youngs_modulus: 3.0e9  # Pa
+  poisson_ratio: 0.35  # dimensionless
+
+test_1:
+  density: 1500  # kg/m^3
+  youngs_modulus: 4.0e9  # Pa
+  poisson_ratio: 0.38  # dimensionless
