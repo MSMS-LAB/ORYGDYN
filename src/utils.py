@@ -1,11 +1,14 @@
 import os
+import sys
+from pathlib import Path
+import argparse
 import math
 import numpy as np
 from numba import njit
 
 from scipy.optimize import minimize_scalar
 
-from force_calculation import norm_n
+from src.force_calculation import norm_n
 
 import yaml
 from functools import wraps
@@ -1045,3 +1048,308 @@ def compute_rectangular_grid_bar_areas(
             raise ValueError(f"Unknown edge type {edge_type[key]} for bar ({i}, {j}).")
 
     return bar_areas, a1, a2
+
+
+def _add_bool_arg(parser, name, default, help_text):
+    dest = name.replace("-", "_")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(f"--{name}", dest=dest, action="store_true", help=help_text)
+    group.add_argument(
+        f"--no-{name}", dest=dest, action="store_false", help=f"Disable: {help_text}"
+    )
+
+    parser.set_defaults(**{dest: default})
+
+
+def add_common_simulation_args(parser):
+    """
+    Arguments shared by all examples:
+    Miura, Kresling, Z-fold, etc.
+    """
+
+    parser.add_argument(
+        "--links-type",
+        type=str,
+        default="extendable",
+        choices=["extendable", "shake", "rattle"],
+        help="Type of link model.",
+    )
+
+    parser.add_argument(
+        "--T",
+        type=float,
+        default=0.03,
+        help="Total simulation time [s].",
+    )
+
+    parser.add_argument(
+        "--zeta",
+        type=float,
+        default=0.01,
+        help="Damping ratio.",
+    )
+
+    parser.add_argument(
+        "--dt-safety-factor",
+        type=float,
+        default=None,
+        help="Timestep safety factor. If not provided, chosen automatically.",
+    )
+
+    parser.add_argument(
+        "--desired-frames",
+        type=int,
+        default=100,
+        help="Approximate number of saved frames.",
+    )
+
+    parser.add_argument(
+        "--material-name",
+        type=str,
+        default="plastic",
+        help="Material name from materials.yaml.",
+    )
+
+    parser.add_argument(
+        "--materials-file",
+        type=Path,
+        default=Path("./src/materials.yaml"),
+        help="Path to materials.yaml.",
+    )
+
+    parser.add_argument(
+        "--force-vector",
+        type=float,
+        nargs=3,
+        default=[0.0, 1.0, 0.0],
+        metavar=("FX", "FY", "FZ"),
+        help="Direction vector of the applied force.",
+    )
+
+    parser.add_argument(
+        "--force-magnitude",
+        type=float,
+        default=20.0,
+        help="Total force magnitude [N].",
+    )
+
+    parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=Path("results"),
+        help="Base directory for plots and output data.",
+    )
+
+    parser.add_argument(
+        "--vtk-dir",
+        type=Path,
+        default=Path("data_vtk"),
+        help="Directory for exported visualization files.",
+    )
+
+    _add_bool_arg(
+        parser,
+        "load-factor",
+        default=True,
+        help_text="Apply force gradually over time.",
+    )
+
+    _add_bool_arg(
+        parser,
+        "plotting",
+        default=True,
+        help_text="Generate plots.",
+    )
+
+    _add_bool_arg(
+        parser,
+        "export-vtk",
+        default=True,
+        help_text="Export geometry history for ParaView visualization.",
+    )
+
+
+def add_miura_args(parser):
+    """
+    Geometry parameters specific to the Miura example.
+    """
+
+    parser.add_argument(
+        "--a", type=float, default=1e-2, help="Miura side length a [m]."
+    )
+    parser.add_argument(
+        "--b", type=float, default=1e-2, help="Miura side length b [m]."
+    )
+    parser.add_argument(
+        "--gamma", type=float, default=np.pi / 2.5, help="Miura angle gamma [rad]."
+    )
+    parser.add_argument(
+        "--theta",
+        type=float,
+        default=np.pi / 2.25,
+        help="Initial folding angle theta [rad].",
+    )
+    parser.add_argument(
+        "--nx", type=int, default=3, help="Number of Miura cells in x direction."
+    )
+    parser.add_argument(
+        "--ny", type=int, default=3, help="Number of Miura cells in y direction."
+    )
+    parser.add_argument(
+        "--thickness", type=float, default=2e-4, help="Panel thickness [m]."
+    )
+
+    _add_bool_arg(
+        parser,
+        "add-center",
+        default=True,
+        help_text="Add center nodes to panels. 'False' does not currently work.",
+    )
+
+
+def add_kresling_args(parser):
+    """
+    Geometry parameters specific to the Kresling example.
+    Change names/defaults according to your actual geometry generator.
+    """
+
+    parser.add_argument(
+        "--radius", type=float, default=1e-2, help="Kresling radius [m]."
+    )
+    parser.add_argument(
+        "--height", type=float, default=2e-2, help="Initial Kresling height [m]."
+    )
+    parser.add_argument(
+        "--n-sides", type=int, default=6, help="Number of polygon sides."
+    )
+    parser.add_argument(
+        "--n-cells", type=int, default=1, help="Number of stacked Kresling cells."
+    )
+    parser.add_argument(
+        "--phi", type=float, default=0.3, help="Twist angle between rings [rad]."
+    )
+    parser.add_argument(
+        "--thickness", type=float, default=2e-4, help="Panel thickness [m]."
+    )
+
+
+def add_zfold_args(parser):
+    """
+    Geometry parameters specific to the Z-fold example.
+    Change names/defaults according to your actual geometry generator.
+    """
+
+    parser.add_argument(
+        "--panel-length", type=float, default=1e-2, help="Panel length [m]."
+    )
+    parser.add_argument(
+        "--panel-width", type=float, default=1e-2, help="Panel width [m]."
+    )
+    parser.add_argument("--n-panels", type=int, default=6, help="Number of panels.")
+    parser.add_argument(
+        "--fold-angle",
+        type=float,
+        default=np.pi / 3.0,
+        help="Initial fold angle [rad].",
+    )
+    parser.add_argument(
+        "--thickness", type=float, default=2e-4, help="Panel thickness [m]."
+    )
+
+
+def parse_opt(args=None, default_example=None):
+    available_examples = {"miura", "kresling", "zfold"}
+
+    if args is None:
+        args = sys.argv[1:]
+
+    args = list(args)
+
+    if default_example is not None:
+        if default_example not in available_examples:
+            raise ValueError(f"Unknown default example: {default_example}")
+
+        # If the user runs:
+        # python examples/Miura_Pattern.py --nx 4 --ny 4
+        #
+        # internally parse it as:
+        # python examples/Miura_Pattern.py miura --nx 4 --ny 4
+        if len(args) == 0 or args[0].startswith("-"):
+            args = [default_example] + args
+
+    parser = argparse.ArgumentParser(
+        description="Run origami dynamics examples.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    subparsers = parser.add_subparsers(
+        dest="example",
+        required=True,
+        help="Origami example to run.",
+    )
+
+    # Miura
+    miura_parser = subparsers.add_parser(
+        "miura",
+        help="Run Miura-ori example.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    add_common_simulation_args(miura_parser)
+    add_miura_args(miura_parser)
+
+    # Kresling
+    kresling_parser = subparsers.add_parser(
+        "kresling",
+        help="Run Kresling example.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    add_common_simulation_args(kresling_parser)
+    add_kresling_args(kresling_parser)
+
+    # Z-fold
+    zfold_parser = subparsers.add_parser(
+        "zfold",
+        help="Run Z-fold example.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    add_common_simulation_args(zfold_parser)
+    add_zfold_args(zfold_parser)
+
+    opt = parser.parse_args(args)
+
+    # ------------------------------------------------------------------
+    # Shared post-processing
+    # ------------------------------------------------------------------
+    opt.force_vector = np.asarray(opt.force_vector, dtype=float)
+
+    norm = np.linalg.norm(opt.force_vector)
+    if norm == 0.0:
+        parser.error("--force-vector must be nonzero.")
+
+    opt.force_vector = opt.force_vector / norm
+
+    if opt.dt_safety_factor is None:
+        if opt.links_type == "extendable":
+            opt.dt_safety_factor = 0.5
+        elif opt.links_type == "rattle":
+            opt.dt_safety_factor = 5.0
+        else:
+            opt.dt_safety_factor = 2.0
+
+    if opt.T <= 0.0:
+        parser.error("--T must be positive.")
+
+    if opt.zeta < 0.0:
+        parser.error("--zeta must be non-negative.")
+
+    if opt.thickness <= 0.0:
+        parser.error("--thickness must be positive.")
+
+    opt.results_dir = opt.results_dir / opt.example
+    opt.vtk_dir = opt.vtk_dir / opt.example
+
+    opt.results_dir.mkdir(parents=True, exist_ok=True)
+    opt.vtk_dir.mkdir(parents=True, exist_ok=True)
+
+    return opt

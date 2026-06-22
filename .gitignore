@@ -1,6 +1,8 @@
 *.mp4
 *.npy
 **/data
+**/data_vtk
+**/results
 *.zip
 *.rar
 *.csv

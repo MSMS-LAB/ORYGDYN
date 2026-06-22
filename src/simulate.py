@@ -1,7 +1,7 @@
 import numpy as np
 from numba import njit
 
-from force_calculation import (
+from src.force_calculation import (
     compute_kinetic_energy,
     pair_calculation,
     hinge_calculation_ang,
@@ -10,8 +10,8 @@ from force_calculation import (
     compute_contact_forces_3d,
 )
 
-from constrained_methods import SHAKE, rattle_position, rattle_velocity
-from utils import build_neighbors, build_inv_m_mask
+from src.constrained_methods import SHAKE, rattle_position, rattle_velocity
+from src.utils import build_neighbors, build_inv_m_mask
 
 
 @njit(cache=True)
