@@ -1079,7 +1079,7 @@ def add_common_simulation_args(parser):
     parser.add_argument(
         "--T",
         type=float,
-        default=0.03,
+        default=0.1,
         help="Total simulation time [s].",
     )
 
@@ -1237,24 +1237,48 @@ def add_kresling_args(parser):
 def add_zfold_args(parser):
     """
     Geometry parameters specific to the Z-fold example.
-    Change names/defaults according to your actual geometry generator.
     """
 
     parser.add_argument(
-        "--panel-length", type=float, default=1e-2, help="Panel length [m]."
-    )
-    parser.add_argument(
-        "--panel-width", type=float, default=1e-2, help="Panel width [m]."
-    )
-    parser.add_argument("--n-panels", type=int, default=6, help="Number of panels.")
-    parser.add_argument(
-        "--fold-angle",
+        "--a",
         type=float,
-        default=np.pi / 3.0,
-        help="Initial fold angle [rad].",
+        default=2.5e-2,
+        help="Z-fold panel/crease length a [m].",
     )
+
     parser.add_argument(
-        "--thickness", type=float, default=2e-4, help="Panel thickness [m]."
+        "--b",
+        type=float,
+        default=1e-2,
+        help="Z-fold panel width b [m].",
+    )
+
+    parser.add_argument(
+        "--theta",
+        type=float,
+        default=np.radians(5.0),
+        help="Initial fold angle theta [rad]. Default is 5 degrees.",
+    )
+
+    parser.add_argument(
+        "--nx",
+        type=int,
+        default=16,
+        help="Number of folds in the x direction. Must be even for Z-fold.",
+    )
+
+    parser.add_argument(
+        "--ny",
+        type=int,
+        default=1,
+        help="Number of folds/cells in the y direction.",
+    )
+
+    parser.add_argument(
+        "--thickness",
+        type=float,
+        default=5e-4,
+        help="Panel thickness [m].",
     )
 
 

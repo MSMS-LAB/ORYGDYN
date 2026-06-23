@@ -3,21 +3,28 @@ from time import perf_counter_ns
 
 import numpy as np
 
-from simulate import run_standard, run_shake, run_rattle
-from structures import (
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from src.simulate import run_standard, run_shake, run_rattle
+from src.structures import (
     asseamble_z_fold,
     compute_triangle_areas,
     build_edge_triangle_connectivity,
 )
 
-from utils import (
+from src.utils import (
     compute_nodal_masses,
     compute_bar_cross_sections,
     compute_torsion_stiffness,
     read_materials_yaml,
+    parse_opt
 )
 
-from plots_and_results import (
+from src.plots_and_results import (
     export_history_as_thin_triangle_series,
     Multiple_plot,
     dual_plot,
@@ -27,39 +34,35 @@ from plots_and_results import (
     save_data_from_sim,
 )
 
-from analysis import analyze_zfold_history
+from src.analysis import analyze_zfold_history
 
 
-def main():
-    # Simulation parameters
-    links_type = "extendable"  # Type of link model: 'extendable' or 'rattle' or 'shake'
-    T = 0.5  # Total simulation time in seconds (0.2s is usually enough to see the folding process, but you can increase it if needed)
-    zeta = 0.01  # 1% the damping ratio
-    if links_type == "extendable":
-        dt_savety_factor = 0.5  # dt multiplier
-    elif links_type == "rattle":
-        dt_savety_factor = 5.0  # dt multiplier (11 for static response)
-    else:  # shake
-        dt_savety_factor = 2.0  # dt multiplier (5 for static response)
-    desired_frames = 1000  # Save results each n-step (1000)
-    material_name = "plastic"  # Material name from materials.yaml
-    force_vector = np.array(
-        [0.0, 1.0, 0.0]
-    )  # Force vector with direction of applied force
-    force_magnitude = 20.0  # Magnitude of the applied force
-    load_factor = True  # Apply forces gradually over time
-    plotting = True  # Plotting parameters
+def main(opt):
+    links_type = (
+        opt.links_type
+    )  # Type of link model: 'extendable' or 'rattle' or 'shake'
+    T = opt.T  # Total simulation time in seconds
+    zeta = opt.zeta  # 1% the damping ratio
+    dt_safety_factor = opt.dt_safety_factor
+    desired_frames = opt.desired_frames  # Save results each n-step
+    material_name = opt.material_name  # Material name from materials.yaml
+    materials_file = opt.materials_file  # Path to materials.yaml
+    force_vector = opt.force_vector  # Force vector with direction of applied force
+    force_magnitude = opt.force_magnitude  # Magnitude of the applied force
+    load_factor = opt.load_factor  # Apply forces gradually over time
+    plotting = opt.plotting  # Plotting parameters
+    results_dir = opt.results_dir  # Base directory for plots and output data
+    export_vtk = opt.export_vtk  # Export vtk files for visualization in Paraview
+    vtk_dir = opt.vtk_dir  # Directory for exported visualization files
     print(f"Simulation with {links_type} links")
 
     # Geometry
-    a = 2.5e-2  # m 2.5e-2
-    b = 1e-2  # m 1e-2
-    thickness = 5e-4  # m Thickness of the panel
-    theta = np.radians(
-        5
-    )  # Fold angle in radians (5 degrees is a good starting point for testing)
-    nx = 16  # 16 # Number of folds in the x direction (must be even for Z-fold)
-    ny = 1
+    a = opt.a  # m
+    b = opt.b  # m
+    thickness = opt.thickness  # m Thickness of the panel
+    theta = opt.theta  # Fold angle in radians (5 degrees is a good starting point for testing)
+    nx = opt.nx  # 16 # Number of folds in the x direction (must be even for Z-fold)
+    ny = opt.ny
     # Generate Z-folding structure
     (
         coordinates,
@@ -78,7 +81,7 @@ def main():
         add_center=True,
     )
     saved = export_geometry_to_matlab(
-        f"/WORK/Origami-Simulations/3D/plots/z_fold/zfold_{nx}x{ny}",
+        f"{results_dir}/zfold_{nx}x{ny}",
         V=coordinates,
         edges=pairs_list,
         bend4=quadruplets_bend,
@@ -102,13 +105,13 @@ def main():
 
     # Load material properties
     E, density, poisson_ratio = read_materials_yaml(
-        filepath="/WORK/Origami-Simulations/3D/materials.yaml",
+        filepath=materials_file,
         material_name=material_name,
     )
     sound_speed = np.sqrt(E / density)  # Speed of sound in the material
     # Characteristic length & timestep
     l_c = float(np.min(a_list))
-    dt = dt_savety_factor * l_c / sound_speed
+    dt = dt_safety_factor * l_c / sound_speed
     print(f"Timestep size dt: {dt:.6e} s")
     fps = desired_frames / T  # frames per second for visualization
     step_to_save_results = max(1, int(1 / (fps * dt)))
@@ -234,14 +237,15 @@ def main():
     total_runtime = (end_time - start_time) * 1e-9  # sec
     print(f"Total simulation runtime: {total_runtime:.3f} seconds \n")
 
-    # Export results for visualization in Paraview
-    export_history_as_thin_triangle_series(
-        history=history,
-        triangles=triangles,
-        basename="z_fold",
-        out_dir="/WORK/Origami-Simulations/3D/data",
-        thickness=thickness,  # choose relative to your geometry
-    )
+    if export_vtk:
+        # Export results for visualization in Paraview
+        export_history_as_thin_triangle_series(
+            history=history,
+            triangles=triangles,
+            basename="z_fold",
+            out_dir=vtk_dir,
+            thickness=thickness,  # choose relative to your geometry
+        )
 
     # Plot energies
     Total_p = Total_P_lin + Total_P_fold + Total_P_bend
@@ -307,7 +311,7 @@ def main():
         dihedral_list=dihedral_deg_list,
         Compatibility_R_list=None,
         time_list=time_array,
-        path_to_save="/WORK/Origami-Simulations/3D/plots/z_fold",
+        path_to_save=results_dir,
         name=f"z_fold_{links_type}_data",
     )
 
@@ -320,12 +324,12 @@ def main():
             total_en=Total_energy,
             dt=dt,
             title=f"Energy vs Timestep - {links_type}",
-            path_to_save="/WORK/Origami-Simulations/3D/plots/z_fold",
+            path_to_save=results_dir,
         )
         dual_plot(
             pairs_of_vars=list_of_vars,
             title=f"Miura-Ori Geometric vs Analytical - {links_type}",
-            path_to_save="/WORK/Origami-Simulations/3D/plots/z_fold",
+            path_to_save=results_dir,
         )
         plot_height_length_vs_dihedral(
             dihedral_deg=dihedral_deg_list,
@@ -338,14 +342,14 @@ def main():
                 (L_an_list, "Length - Analytical"),
             ],
             title=f"Miura-Ori H/L/W vs Dihedral - {links_type}",
-            path_to_save="/WORK/Origami-Simulations/3D/plots/z_fold",
+            path_to_save=results_dir,
         )
         plot_reaction_forces_vs_time(
             force_history=force_history,
             pinned_node_ids=pin_y_ids,
             axis=1,
             title=f"Reaction Forces vs Time - {links_type}",
-            path_to_save="/WORK/Origami-Simulations/3D/plots/z_fold",
+            path_to_save=results_dir,
         )
 
     n_folds = len(fold_stiffness_list)

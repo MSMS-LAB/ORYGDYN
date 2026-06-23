@@ -56,7 +56,7 @@ def main(opt):
     export_vtk = opt.export_vtk  # Export vtk files for visualization in Paraview
     vtk_dir = opt.vtk_dir  # Directory for exported visualization files
     print(f"Simulation with {links_type} links")
-    # print(results_dir)
+
     # Geometry
     a = opt.a  # m
     b = opt.b  # m
