@@ -1200,37 +1200,66 @@ def add_miura_args(parser):
         "--thickness", type=float, default=2e-4, help="Panel thickness [m]."
     )
 
-    _add_bool_arg(
-        parser,
-        "add-center",
-        default=True,
-        help_text="Add center nodes to panels. 'False' does not currently work.",
-    )
-
 
 def add_kresling_args(parser):
     """
     Geometry parameters specific to the Kresling example.
-    Change names/defaults according to your actual geometry generator.
     """
 
     parser.add_argument(
-        "--radius", type=float, default=1e-2, help="Kresling radius [m]."
+        "--nz",
+        type=int,
+        default=4,
+        help="Number of Kresling cells/layers in the z direction.",
     )
+
     parser.add_argument(
-        "--height", type=float, default=2e-2, help="Initial Kresling height [m]."
+        "--a",
+        type=float,
+        default=6.5e-3,
+        help="Kresling characteristic edge length a [m].",
     )
+
     parser.add_argument(
-        "--n-sides", type=int, default=6, help="Number of polygon sides."
+        "--edges",
+        type=int,
+        default=6,
+        help="Number of polygon edges/sides.",
     )
+
     parser.add_argument(
-        "--n-cells", type=int, default=1, help="Number of stacked Kresling cells."
+        "--height-ratio",
+        type=float,
+        default=1.2,
+        help="Height ratio used to compute height = a * height_ratio.",
     )
+
     parser.add_argument(
-        "--phi", type=float, default=0.3, help="Twist angle between rings [rad]."
+        "--height",
+        type=float,
+        default=None,
+        help="Initial Kresling cell height [m]. If not provided, height = a * height_ratio.",
     )
+
     parser.add_argument(
-        "--thickness", type=float, default=2e-4, help="Panel thickness [m]."
+        "--phi",
+        type=float,
+        default=0.0,
+        help="Kresling phi parameter [rad].",
+    )
+
+    parser.add_argument(
+        "--twist",
+        type=float,
+        default=0.0,
+        help="Twist angle between rings [rad].",
+    )
+
+    parser.add_argument(
+        "--thickness",
+        type=float,
+        default=2e-4,
+        help="Panel thickness [m].",
     )
 
 

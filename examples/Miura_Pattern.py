@@ -1,5 +1,4 @@
 # %%
-from email import utils
 from time import perf_counter_ns
 
 import numpy as np

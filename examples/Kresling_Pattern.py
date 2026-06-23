@@ -3,21 +3,28 @@ from time import perf_counter_ns
 
 import numpy as np
 
-from simulate import run_standard, run_shake, run_rattle
-from structures import (
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from src.simulate import run_standard, run_shake, run_rattle
+from src.structures import (
     compute_triangle_areas,
     build_edge_triangle_connectivity,
 )
-from Kresling_Geometry import asseamble_kresling_v2 as asseamble_kresling
+from src.Kresling_Geometry import asseamble_kresling
 
-from utils import (
+from src.utils import (
     compute_nodal_masses,
     compute_bar_cross_sections,
     compute_torsion_stiffness,
     read_materials_yaml,
+    parse_opt,
 )
 
-from plots_and_results import (
+from src.plots_and_results import (
     export_geometry_to_matlab,
     export_history_as_thin_triangle_series,
     Multiple_plot,
@@ -28,39 +35,37 @@ from plots_and_results import (
     plot_potential_energy_vs_height,
 )
 
-from analysis import (
+from src.analysis import (
     analyze_kresling_history_current_phi,
 )
 
 
-def main():
-    # Simulation parameters
-    links_type = "rattle"  # Type of link model: 'extendable' or 'rattle' or 'shake'
-    T = 0.02  # Total simulation time in seconds
-    zeta = 0.01  # 1% the damping ratio
-    if links_type == "extendable":
-        dt_savety_factor = 0.2  # dt multiplier
-    elif links_type == "rattle":
-        dt_savety_factor = 2.0  # dt multiplier (11 for static response)
-    else:  # shake
-        dt_savety_factor = 2.0  # dt multiplier
-    desired_frames = 300  # Save results each n-step
-    material_name = "plastic"  # Material name from materials.yaml
-    force_vector = np.array(
-        [0.0, 0.0, -1.0]
-    )  # Force vector with direction of applied force
-    force_magnitude = 300  # Magnitude of the applied force
-    load_factor = True  # Apply forces gradually over time
-    plotting = True  # Plotting parameters
+def main(opt):
+    links_type = (
+        opt.links_type
+    )  # Type of link model: 'extendable' or 'rattle' or 'shake'
+    T = opt.T  # Total simulation time in seconds
+    zeta = opt.zeta  # 1% the damping ratio
+    dt_safety_factor = opt.dt_safety_factor
+    desired_frames = opt.desired_frames  # Save results each n-step
+    material_name = opt.material_name  # Material name from materials.yaml
+    materials_file = opt.materials_file  # Path to materials.yaml
+    force_vector = opt.force_vector  # Force vector with direction of applied force
+    force_magnitude = opt.force_magnitude  # Magnitude of the applied force
+    load_factor = opt.load_factor  # Apply forces gradually over time
+    plotting = opt.plotting  # Plotting parameters
+    results_dir = opt.results_dir  # Base directory for plots and output data
+    export_vtk = opt.export_vtk  # Export vtk files for visualization in Paraview
+    vtk_dir = opt.vtk_dir  # Directory for exported visualization files
     print(f"Simulation with {links_type} links")
 
     # Geometry
-    nz = 4
-    a = 6.5e-3  # m
-    edges = 6
-    height_ratio = 1.2
+    nz = opt.nz  # Number of Kresling cells in the vertical direction
+    a = opt.a  # m
+    edges = opt.edges
+    height_ratio = opt.height_ratio
     height = a * height_ratio
-    thickness = 2e-4  # m Thickness of the panel
+    thickness = opt.thickness  # m Thickness of the panel
     # Generate Kresling structure
     (
         coordinates,
@@ -80,7 +85,7 @@ def main():
         add_midpoints=True,
     )
     saved = export_geometry_to_matlab(
-        f"/WORK/Origami-Simulations/3D/plots/kresling/kresling_{nz}",
+        f"{results_dir}/kresling_{nz}",
         V=coordinates,
         edges=pairs_list,
         bend4=quadruplets_bend,
@@ -104,13 +109,13 @@ def main():
 
     # Load material properties
     E, density, poisson_ratio = read_materials_yaml(
-        filepath="/WORK/Origami-Simulations/3D/materials.yaml",
+        filepath=materials_file,
         material_name=material_name,
     )
     sound_speed = np.sqrt(E / density)  # Speed of sound in the material
     # Characteristic length & timestep
     l_c = float(np.min(a_list))
-    dt = dt_savety_factor * l_c / sound_speed
+    dt = dt_safety_factor * l_c / sound_speed
     print(f"Timestep size dt: {dt:.6e} s")
     fps = desired_frames / T  # frames per second for visualization
     step_to_save_results = max(1, int(1 / (fps * dt)))
@@ -234,14 +239,15 @@ def main():
     total_runtime = (end_time - start_time) * 1e-9  # sec
     print(f"Total simulation runtime: {total_runtime:.3f} seconds")
 
-    # Export results for visualization in Paraview
-    export_history_as_thin_triangle_series(
-        history=history,
-        triangles=triangles,
-        basename="kresling",
-        out_dir="/WORK/Origami-Simulations/3D/data",
-        thickness=thickness,  # choose relative to your geometry
-    )
+    if export_vtk:
+        # Export results for visualization in Paraview
+        export_history_as_thin_triangle_series(
+            history=history,
+            triangles=triangles,
+            basename="kresling",
+            out_dir=vtk_dir,
+            thickness=thickness,  # choose relative to your geometry
+        )
 
     # Plot energies
     Total_p = Total_P_lin + Total_P_fold + Total_P_bend
@@ -302,7 +308,7 @@ def main():
     # Save data from simulation
     save_data_from_sim_new(
         data_dict=data_dict,
-        path_to_save="/WORK/Origami-Simulations/3D/plots/kresling",
+        path_to_save=results_dir,
         name=f"kresling_{links_type}_data",
     )
 
@@ -315,12 +321,12 @@ def main():
             total_en=Total_energy,
             dt=dt,
             title=f"Energy vs Timestep - {links_type}",
-            path_to_save="/WORK/Origami-Simulations/3D/plots/kresling",
+            path_to_save=results_dir,
         )
         dual_plot(
             pairs_of_vars=list_of_vars,
             title=f"Kresling Geometric vs Analytical - {links_type}",
-            path_to_save="/WORK/Origami-Simulations/3D/plots/kresling",
+            path_to_save=results_dir,
         )
         plot_height_length_vs_dihedral(
             dihedral_deg=phi_actual_list_deg,
@@ -333,14 +339,14 @@ def main():
                 (r_analytical_list, "Radius - Analytical"),
             ],
             title=f"Miura-Ori H/L/W vs Dihedral - {links_type}",
-            path_to_save="/WORK/Origami-Simulations/3D/plots/kresling",
+            path_to_save=results_dir,
         )
         plot_reaction_forces_vs_time(
             force_history=force_history,
             pinned_node_ids=pin_z_ids,
             axis=2,
             title=f"Reaction Forces vs Time - {links_type}",
-            path_to_save="/WORK/Origami-Simulations/3D/plots/kresling",
+            path_to_save=results_dir,
         )
         print(
             f"Reaction force magnitude: {force_history[-1, pin_z_ids, 2].sum():.3f} N"
@@ -351,7 +357,7 @@ def main():
             Total_P_bend=Total_P_bend,
             H_actual_list=H_actual_list,
             step_to_save_results=step_to_save_results,
-            path_to_save="/WORK/Origami-Simulations/3D/plots/kresling/potential_energy_vs_height.png",
+            path_to_save=f"{results_dir}/potential_energy_vs_height.png",
             title=f"Potential Energy vs Height - {links_type}",
         )
 
@@ -364,6 +370,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    opt_input = parse_opt(default_example="kresling")
+    main(opt=opt_input)
 
 # %%

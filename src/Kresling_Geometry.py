@@ -1,6 +1,6 @@
 # %%
 import numpy as np
-from plots_and_results import (
+from src.plots_and_results import (
     plot_particles_with_forces,
     create_text_bond_file_2d,
     Output,
