@@ -414,6 +414,7 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    main()
+    opt_input = parse_opt(default_example="zfold")
+    main(opt=opt_input)
 
 # %%
