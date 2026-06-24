@@ -22,13 +22,19 @@ DOI: 10.1088/1361-665X/ae7f56
 ## Installation
 
 Clone the repository:
+
 ```bash
-git clone https://github.com/MSMS-LAB/ORYGDYN
+git clone https://github.com/MSMS-LAB/ORYGDYN.git
+cd ORYGDYN
 ```
-Install dependencies:
+
+Install the required dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
+
+The code has been tested with Python 3.11.
 
 ## Quick Start
 
