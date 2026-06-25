@@ -2,6 +2,8 @@
 
 The code from the paper: Maksim Sviridenko and Igor E. Berinskii. "Dynamical simulation of origami-based elastic structures using discrete models." Smart Materials and Structures (2026). The code presents a package for explicit dynamic simulations for the origami structures using a bar-and-hinge approach. The code is featured with the implementation of constraint dynamics, including SHAKE and RATTLE, and provides three examples for popular origami patterns like Z-fold, Miura, and Kresling.
 
+[![ORYGDYN Demo](docs/images/S1_init.png)](docs/videos/S1.mp4)
+
 ## Associated Publication
 
 If you use this software, please cite:
