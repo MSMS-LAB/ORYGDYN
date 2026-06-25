@@ -14,6 +14,7 @@ from src.structures import (
     compute_triangle_areas,
     build_edge_triangle_connectivity,
 )
+# from src.Kresling_Geometry import asseamble_kresling_v2 as asseamble_kresling
 from src.Kresling_Geometry import asseamble_kresling
 
 from src.utils import (

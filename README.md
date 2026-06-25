@@ -38,15 +38,73 @@ The code has been tested with Python 3.11.
 
 ## Quick Start
 
+The presented parameters for different origami structures are valid for the section "*4.1 Kinematic Analysis*" of the corresponding article. 
+
 ### Miura Pattern
 ```bash
-python examples/Miura_Pattern.py
+python examples/Miura_Pattern.py \
+--links-type extendable \
+--T 0.03 \
+--zeta 0.01 \
+--dt-safety-factor 0.5 \
+--desired-frames 100 \
+--material-name plastic \
+--materials-file ./src/materials.yaml \
+--force-vector 0 1 0 \
+--force-magnitude 20 \
+--load-factor \
+--plotting \
+--a 0.01 \
+--b 0.01 \
+--gamma 1.26 \
+--theta 1.4 \
+--nx 3 \
+--ny 3 \
+--thickness 0.0002
 ```
-### Kresling Pattern
-```bash
-python examples/Kresling_Pattern.py
-```
+The recommended value of `--dt-safety-factor` is 2.0 for `--links-type` `shake` and 5.0 for `--links-type` `rattle`.
+
 ### Z-Fold Pattern
 ```bash
-python examples/Z_Fold_Pattern.py
+python examples/Z_Fold_Pattern.py \
+--links-type extendable \
+--T 0.5 \
+--zeta 0.01 \
+--dt-safety-factor 0.5 \
+--desired-frames 1000 \
+--material-name plastic \
+--materials-file ./src/materials.yaml \
+--force-vector 0 1 0 \
+--force-magnitude 20 \
+--load-factor \
+--plotting \
+--a 0.025 \
+--b 0.01 \
+--theta 0.087 \
+--nx 16 \
+--ny 1 \
+--thickness 0.0005
 ```
+The recommended value of `--dt-safety-factor` is 2.0 for `--links-type` `shake` and 5.0 for `--links-type` `rattle`.
+
+### Kresling Pattern
+```bash
+python examples/Kresling_Pattern.py \
+--links-type extendable \
+--T 0.02 \
+--zeta 0.01 \
+--dt-safety-factor 0.2 \
+--desired-frames 300 \
+--material-name plastic \
+--materials-file ./src/materials.yaml \
+--force-vector 0 0 -1 \
+--force-magnitude 300 \
+--load-factor \
+--plotting \
+--nz 4 \
+--a 0.0065 \
+--edges 6 \
+--height-ratio 1.2 \
+--thickness 0.0002
+```
+The recommended value of `--dt-safety-factor` is 2.0 for `--links-type` `shake` and `rattle`.

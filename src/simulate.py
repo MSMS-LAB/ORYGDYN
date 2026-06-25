@@ -130,7 +130,7 @@ def run_standard(
         # if t == 0:
         if external_force_ids is not None and len(external_force_ids) > 0:
             if force_vector is not None:
-                if load_factor is not None:
+                if load_factor:
                     load_factor = (t + 1) / Nt
                     forces_total[external_force_ids] += load_factor * force_vector
                 else:
@@ -313,7 +313,7 @@ def run_shake(
         # Apply external forces
         if external_force_ids is not None and len(external_force_ids) > 0:
             if force_vector is not None:
-                if load_factor is not None:
+                if load_factor:
                     load_factor = (t + 1) / Nt
                     forces_total[external_force_ids] += load_factor * force_vector
                 else:
@@ -483,7 +483,7 @@ def run_rattle(
         # Apply external forces
         if external_force_ids is not None and len(external_force_ids) > 0:
             if force_vector is not None:
-                if load_factor is not None:
+                if load_factor:
                     load_factor = (t + 1) / Nt
                     forces_total[external_force_ids] += load_factor * force_vector
                 else:
